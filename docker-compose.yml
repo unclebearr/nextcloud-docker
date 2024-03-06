@@ -4,7 +4,7 @@ services:
   db:
     container_name: nc-db
     hostname: nc-db
-    image: mariadb:latest
+    image: mariadb:11.3.2
     networks:
       nc_net:
         ipv4_address: 172.34.0.3
