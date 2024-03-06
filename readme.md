@@ -24,11 +24,11 @@ from host machine
 
 ## basic config additions
 
-`docker exec --user www-data -it nc-web php occ config:system:set default_phone_region --value=“CA”`
+`docker exec --user www-data -it nc-web php occ config:system:set default_phone_region --value=CA`
 
 https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes
 
 
-`docker exec --user www-data -it nc-web php occ config:system:set logtimezone --value=“America/Toronto”`
+`docker exec --user www-data -it nc-web php occ config:system:set logtimezone --value=America/Toronto`
 
 https://www.php.net/manual/en/timezones.php
