@@ -1,0 +1,107 @@
+version: '3.9'
+
+services:
+  db:
+    container_name: nc-db
+    hostname: nc-db
+    image: mariadb:latest
+    networks:
+      nc_net:
+        ipv4_address: 172.34.0.3
+    environment:
+      MARIADB_DB_FILE: /run/secrets/db_name
+      MARIADB_USER_FILE: /run/secrets/db_user
+      MARIADB_PASSWORD_FILE: /run/secrets/db_password
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+    secrets:
+      - db_name
+      - db_user
+      - db_password
+      - db_root_password
+    volumes:
+      - ./mariadb_data:/var/lib/mysql
+  redis:
+    container_name: nc-redis
+    image: redis:7.2.4-alpine
+    restart: always
+    command: ["redis-server", "--requirepass", "${REDIS_HOST_PASSWORD}"]
+    networks:
+      nc_net:
+        ipv4_address: 172.34.0.4
+    secrets:
+      - redis_host_password
+    volumes:
+      - ./redis:/data
+
+  nextcloud:
+    container_name: nc-web
+    image: nextcloud:stable-apache
+    restart: always
+    networks:
+      nc_net:
+        ipv4_address: 172.34.0.2
+      proxy:
+    depends_on:
+      - redis
+      - db
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextcloud.entrypoints=http"
+      - "traefik.http.routers.nextcloud.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.middlewares.nextcloud-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.nextcloud.middlewares=nextcloud-https-redirect,nextcloud_redirect"
+      - "traefik.http.routers.nextcloud-secure.entrypoints=https"
+      - "traefik.http.routers.nextcloud-secure.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.nextcloud-secure.tls=true"
+      - "traefik.http.routers.nextcloud-secure.service=nextcloud"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.middlewares.nextcloud-secure.headers.customFrameOptionsValue=ALLOW-FROM https://${ROOT_DOMAIN}"
+      - "traefik.http.middlewares.nextcloud-secure.headers.contentSecurityPolicy=frame-ancestors 'self' ${ROOT_DOMAIN} *.${ROOT_DOMAIN}"
+      - "traefik.http.middlewares.nextcloud-secure.headers.stsSeconds=15552000"
+      - "traefik.http.middlewares.nextcloud-secure.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.nextcloud-secure.headers.stsPreload=true"
+      - "traefik.http.middlewares.nextcloud_redirect.redirectregex.regex=/.well-known/(card|cal)dav"
+      - "traefik.http.middlewares.nextcloud_redirect.redirectregex.replacement=/remote.php/dav/"
+      - "traefik.http.routers.nextcloud-secure.middlewares=nextcloud_redirect"
+    environment:
+      MYSQL_DB_FILE: /run/secrets/db_name
+      MYSQL_USER_FILE: /run/secrets/db_user
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+      MYSQL_HOST: "172.34.0.3"
+      MYSQL_PORT: "3306"
+      REDIS_HOST_PASSWORD: "${REDIS_HOST_PASSWORD}"
+      REDIS_HOST: "172.34.0.4"
+      OVERWRITEHOST: "${DOMAIN}"  
+      NEXTCLOUD_DATA_DIR: "${NC_DATA_DIR}"
+      PHP_MEMORY_LIMIT: "${PHP_MEMORY_LIMIT}"
+      PHP_UPLOAD_LIMIT: "${PHP_UPLOAD_LIMIT}"
+      NEXTCLOUD_TRUSTED_DOMAINS: "${DOMAIN}"
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES}"
+      OVERWRITEPROTOCOL: "https"
+      OVERWRITE.CLI.URL: "${DOMAIN}"
+    secrets:
+      - db_name
+      - db_user
+      - db_password
+      - redis_host_password
+    volumes:
+      - ./nc-data:/var/www/html
+
+secrets:
+  db_name:
+    file: .secrets/DB_NAME
+  db_user:
+    file: .secrets/DB_USER
+  db_password:
+    file: .secrets/DB_PASSWORD
+  db_root_password:
+    file: .secrets/DB_ROOT_PASSWORD
+
+networks:
+  nc_net:
+    ipam:
+      config:
+        - subnet: 172.34.0.0/24
+  proxy:
+    external: true
