@@ -10,7 +10,9 @@ find root password from the "DB_ROOT_PASSWORD" file in .secrets directory.
 `docker exec -it nc-db mariadb -u root -p`
 
 `GRANT ALL PRIVILEGES ON your_database.* TO 'your_user'@'%';
+
 FLUSH PRIVILEGES;
+
 exit`
 
 ## cronjob
