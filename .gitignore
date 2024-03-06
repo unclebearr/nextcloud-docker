@@ -1,0 +1,4 @@
+.env
+nc-data/
+mariadb-data/
+redis/
