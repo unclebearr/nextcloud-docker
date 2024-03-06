@@ -1,4 +1,4 @@
-# NEXTCLOUD, REDIS, MARIADB
+# NEXTCLOUD, REDIS, MARIADB, TRAEFIK
 
 rename example.env to .env fill out the variables.
 
