@@ -1,10 +1,12 @@
 # NEXTCLOUD, REDIS, MARIADB
 
-rename example.env to .env fill out the variables
+rename example.env to .env fill out the variables.
+
 populate the .secrets directory files with credentials. avoid special characters like semicolon (;), single quote ('), double quote ("), and backslash (\), as well as whitespace characters such as space, tab, and newline, to mitigate potential syntax errors.
 
 ## database
 find root password from the "DB_ROOT_PASSWORD" file in .secrets directory.
+
 `docker exec -it nc-db mariadb -u root -p`
 
 `GRANT ALL PRIVILEGES ON your_database.* TO 'your_user'@'%';
@@ -13,6 +15,7 @@ exit`
 
 ## cronjob
 from host machine
+
 `sudo crontab -e`
 
 `*/5 * * * * docker exec -u www-data nc-web php /var/www/html/cron.php`
