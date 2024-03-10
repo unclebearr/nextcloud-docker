@@ -5,6 +5,7 @@ services:
     container_name: nc-db
     hostname: nc-db
     image: mariadb:11.3.2
+    restart: unless-stopped
     networks:
       nc_net:
         ipv4_address: 172.34.0.3
@@ -23,7 +24,7 @@ services:
   redis:
     container_name: nc-redis
     image: redis:7.2.4-alpine
-    restart: always
+    restart: unless-stopped
     command: ["redis-server", "--requirepass", "${REDIS_HOST_PASSWORD}"]
     networks:
       nc_net:
@@ -34,7 +35,7 @@ services:
   nextcloud:
     container_name: nc-web
     image: nextcloud:stable-apache
-    restart: always
+    restart: unless-stopped
     networks:
       nc_net:
         ipv4_address: 172.34.0.2
