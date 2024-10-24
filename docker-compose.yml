@@ -1,45 +1,12 @@
-version: '3.9'
-
 services:
-  db:
-    container_name: nc-db
-    hostname: nc-db
-    image: mariadb:11.3.2
-    restart: unless-stopped
-    networks:
-      nc_net:
-        ipv4_address: 172.34.0.3
-    environment:
-      MARIADB_DB_FILE: /run/secrets/db_name
-      MARIADB_USER_FILE: /run/secrets/db_user
-      MARIADB_PASSWORD_FILE: /run/secrets/db_password
-      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
-    secrets:
-      - db_name
-      - db_user
-      - db_password
-      - db_root_password
-    volumes:
-      - ./mariadb_data:/var/lib/mysql
-  redis:
-    container_name: nc-redis
-    image: redis:7.2.4-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--requirepass", "${REDIS_HOST_PASSWORD}"]
-    networks:
-      nc_net:
-        ipv4_address: 172.34.0.4
-    volumes:
-      - ./redis:/data
 
-  nextcloud:
+  nextcloud-web:
     container_name: nc-web
-    image: nextcloud:stable-apache
-    restart: unless-stopped
+    image: nginx:stable-perl
+    restart: always
     networks:
-      nc_net:
-        ipv4_address: 172.34.0.2
-      proxy:
+      - nc_net
+      - proxy
     depends_on:
       - redis
       - db
@@ -53,24 +20,37 @@ services:
       - "traefik.http.routers.nextcloud-secure.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.nextcloud-secure.tls=true"
       - "traefik.http.routers.nextcloud-secure.service=nextcloud"
-      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=443"
+      - "traefik.http.services.nextcloud.loadbalancer.server.scheme=https"
       - "traefik.docker.network=proxy"
       - "traefik.http.middlewares.nextcloud-secure.headers.customFrameOptionsValue=ALLOW-FROM https://${ROOT_DOMAIN}"
       - "traefik.http.middlewares.nextcloud-secure.headers.contentSecurityPolicy=frame-ancestors 'self' ${ROOT_DOMAIN} *.${ROOT_DOMAIN}"
-      - "traefik.http.middlewares.nextcloud-secure.headers.stsSeconds=15552000"
-      - "traefik.http.middlewares.nextcloud-secure.headers.stsIncludeSubdomains=true"
-      - "traefik.http.middlewares.nextcloud-secure.headers.stsPreload=true"
       - "traefik.http.middlewares.nextcloud_redirect.redirectregex.regex=/.well-known/(card|cal)dav"
       - "traefik.http.middlewares.nextcloud_redirect.redirectregex.replacement=/remote.php/dav/"
       - "traefik.http.routers.nextcloud-secure.middlewares=nextcloud_redirect"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d/
+      - ./nc_data:/var/www/html
+      - ./ssl:/etc/ssl/nginx
+
+# NEXTCLOUD-FPM
+  nextcloud:
+    container_name: nc-fpm
+    image: nextcloud:production-fpm
+    restart: always
+    networks:
+      - nc_net
+    depends_on:
+      - redis
+      - db
     environment:
       MYSQL_DB_FILE: /run/secrets/db_name
       MYSQL_USER_FILE: /run/secrets/db_user
       MYSQL_PASSWORD_FILE: /run/secrets/db_password
-      MYSQL_HOST: "172.34.0.3"
+      MYSQL_HOST: "nc-db"
       MYSQL_PORT: "3306"
       REDIS_HOST_PASSWORD: "${REDIS_HOST_PASSWORD}"
-      REDIS_HOST: "172.34.0.4"
+      REDIS_HOST: "nc-redis"
       OVERWRITEHOST: "${DOMAIN}"  
       NEXTCLOUD_DATA_DIR: "${NC_DATA_DIR}"
       PHP_MEMORY_LIMIT: "${PHP_MEMORY_LIMIT}"
@@ -78,14 +58,47 @@ services:
       NEXTCLOUD_TRUSTED_DOMAINS: "${DOMAIN}"
       TRUSTED_PROXIES: "${TRUSTED_PROXIES}"
       OVERWRITEPROTOCOL: "https"
-      OVERWRITE.CLI.URL: "${DOMAIN}"
+      OVERWRITE.CLI.URL: "https://${DOMAIN}"
     secrets:
       - db_name
       - db_user
       - db_password
     volumes:
-      - ./nc-data:/var/www/html
+      - ./nc_data:/var/www/html
 
+# DATABASE
+  db:
+    container_name: nc-db
+    hostname: nc-db
+    image: mariadb:10.6
+    restart: always
+    networks:
+      - nc_net
+    environment:
+      MARIADB_DB_FILE: /run/secrets/db_name
+      MARIADB_USER_FILE: /run/secrets/db_user
+      MARIADB_PASSWORD_FILE: /run/secrets/db_password
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+    secrets:
+      - db_name
+      - db_user
+      - db_password
+      - db_root_password
+    volumes:
+      - ./mariadb_data:/var/lib/mysql
+
+# REDIS CACHE
+  redis:
+    container_name: nc-redis
+    image: redis:alpine3.20
+    restart: always
+    command: ["redis-server", "--requirepass", "${REDIS_HOST_PASSWORD}"]
+    networks:
+      - nc_net
+    volumes:
+      - ./redis_data:/data
+
+# SECRETS
 secrets:
   db_name:
     file: .secrets/DB_NAME
@@ -95,11 +108,12 @@ secrets:
     file: .secrets/DB_PASSWORD
   db_root_password:
     file: .secrets/DB_ROOT_PASSWORD
+  redis_host_password:
+    file: .secrets/REDIS_HOST_PASSWORD
 
+# NETWORK
 networks:
   nc_net:
-    ipam:
-      config:
-        - subnet: 172.34.0.0/24
+    driver: local
   proxy:
     external: true

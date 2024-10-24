@@ -1,4 +1,6 @@
+.vscode
+
 .env
-nc-data/
-mariadb-data/
-redis/
+nc_data/
+mariadb_data/
+redis_data/
