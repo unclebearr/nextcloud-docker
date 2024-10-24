@@ -29,7 +29,9 @@ sudo openssl x509 -req -days 3650 -in nc.local.example.ca.csr -signkey nc.local.
 
 ## Cronjob
 from host machine
+
 sudo crontab -e
+
 */5 * * * * docker exec -u www-data nc-fpm php /var/www/html/cron.php
 
 
