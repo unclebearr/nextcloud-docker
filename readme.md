@@ -1,5 +1,5 @@
 # Nextcloud FPM - Nginx - MariaDB - Redis - Traefik
-Replace all example.ca domains with your domain in readme examples, .env, ./nginx/nextcloud.conf
+Replace all nc.local.example.ca domains with your domain in readme examples, .env, ./nginx/nextcloud.conf
 
 
 ## database
