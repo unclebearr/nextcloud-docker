@@ -6,6 +6,7 @@ Replace all nc.local.example.ca domains with your domain in readme examples, .en
 Copy `example.env` and rename it to `.env` replace example variables.
 
 DOMAIN=cloud.example.com
+
 ROOT_DOMAIN=example.com
 
 #### Change if you would like to store your Nextcloud data in a uniquely named folder.
@@ -13,6 +14,7 @@ NC_DATA_DIR=/var/www/html/data
 
 #### Adjust to your needs 1g memory limit is pretty high as it is but the upload limit can be changed if you would like to limit the filesize per upload.
 PHP_MEMORY_LIMIT=1G
+
 PHP_UPLOAD_LIMIT=1024G
 
 #### docker inspect network proxy & look for the subnet.
